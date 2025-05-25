@@ -39,17 +39,42 @@ def greedy_traversal(stores, start):
 def total_cost(path):
     return sum(euclidean_distance(path[i], path[i + 1]) for i in range(len(path) - 1))
 
-# Streamlit UI
-st.title("Mall Greedy Path Finder 🛍️")
+st.set_page_config(page_title="Mall Greedy Path Finder", page_icon="🛍️", layout="wide")
+st.markdown(
+    """
+    <style>
+    .stApp { background-color: #f4f6fb; }
+    .stButton>button {
+        background-color: #6c63ff;
+        color: white !important;
+        border-radius: 8px;
+        font-weight: bold;
+    }
+    .stButton>button:hover {
+        background-color: #48409a;
+        color: #fff !important;
+    }
+    /* Optional: Only sidebar button */
+    /* div[data-testid="stSidebar"] .stButton>button { color: white !important; } */
+    </style>
+    """, unsafe_allow_html=True
+)
 
-store_types = sorted(set(store.type for store in stores))
-selected_type = st.selectbox("Choose a Store Type to Start From", store_types)
+st.title("🛍️ Mall Greedy Path Finder")
+st.markdown("Find the optimal path to visit different store categories in the mall, minimizing your walking distance!")
 
-matching_stores = [s for s in stores if s.type == selected_type]
-store_names = [f"{i}: {s.name} (Floor {s.floor})" for i, s in enumerate(matching_stores)]
-selected_store = st.selectbox("Choose a Starting Store", store_names)
+with st.sidebar:
+    st.header("Settings")
+    selected_type = st.selectbox("Choose a Store Type to Start From", store_types)
+    matching_stores = [s for s in stores if s.type == selected_type]
+    store_names = [f"{i}: {s.name} (Floor {s.floor})" for i, s in enumerate(matching_stores)]
+    selected_store = st.selectbox("Choose a Starting Store", store_names)
+    run = st.button("🚀 Find Optimal Path")
 
-if st.button("Find Optimal Path"):
+if 'run' not in locals():
+    run = False
+
+if run:
     index = int(selected_store.split(":")[0])
     start_store = matching_stores[index]
 
@@ -59,21 +84,69 @@ if st.button("Find Optimal Path"):
 
     cost = total_cost(visited)
 
-    # Show summary
-    st.success("Path calculated!")
-    # st.write(f"**Total Cost:** {cost:.2f}")
-    # st.write(f"**Execution Time:** {end_time - start_time:.4f} seconds")
+    st.success("✅ Path calculated!")
 
-    # Build and display table
+    col1, col2, col3 = st.columns(3)
+    with col1:
+        st.metric("Total Distance", f"{cost:.2f}")
+
+        max_cost = 100 
+        percent = min(int((cost / max_cost) * 100), 100)
+
+        st.markdown(
+            f"""
+            <style>
+            .progress {{
+                background: #e0e0e0;
+                border-radius: 8px;
+                height: 22px;
+                width: 100%;
+                margin-top: 8px;
+                margin-bottom: 12px;
+                box-shadow: 0 2px 8px 0 rgba(44, 62, 80, 0.10);
+            }}
+            .progress-bar {{
+                height: 100%;
+                border-radius: 8px;
+                background: linear-gradient(90deg, #6c63ff 0%, #ff4b4b 100%);
+                width: {percent}%;
+                color: white;
+                text-align: center;
+                font-weight: bold;
+                line-height: 22px;
+                transition: width 0.5s;
+            }}
+            </style>
+            <div class="progress">
+                <div class="progress-bar" role="progressbar" style="width: {percent}%;"
+                     aria-valuenow="{percent}" aria-valuemin="0" aria-valuemax="100">{percent}%</div>
+            </div>
+            """,
+            unsafe_allow_html=True
+        )
+    col2.metric("Stores Visited", len(visited))
+    col3.metric("Execution Time (s)", f"{end_time - start_time:.4f}")
+
+    st.markdown("### 🗺️ Path Table")
     path_table = {
         "Store": [s.name for s in visited],
         "Floor": [s.floor for s in visited],
         "Category": [s.type for s in visited]
     }
-    st.table(pd.DataFrame(path_table))
+    st.dataframe(pd.DataFrame(path_table), use_container_width=True)
 
-    # Optional: Plot the path
-    fig, ax = plt.subplots()
+    st.markdown("---")
+
+    st.markdown("### 📍 Path Visualization")
+    fig, ax = plt.subplots(figsize=(10, 4))
     x = [s.x for s in visited]
     y = [s.y for s in visited]
     names = [s.name for s in visited]
+    ax.plot(x, y, marker='o', color='#ff4b4b', linewidth=2)
+    for i, name in enumerate(names):
+        ax.text(x[i], y[i], name, fontsize=9, ha='right', color='#333333')
+    ax.set_title("Greedy Store Path", fontsize=14)
+    ax.set_xlabel("X")
+    ax.set_ylabel("Y")
+    ax.grid(True, linestyle='--', alpha=0.5)
+    st.pyplot(fig)
